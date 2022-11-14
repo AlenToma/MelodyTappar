@@ -38,7 +38,7 @@ const style = StyleSheet.create({
     },
 
     road: {
-        width: "70%",
+        width: "90%",
         height: "100%",
         borderColor: "#CCC",
         borderWidth: 1,

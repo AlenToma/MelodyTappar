@@ -9,9 +9,13 @@ import HttpClient from '../../objects/HttpClient';
 import { MidiFile } from '../../objects/MidiFile';
 import YoutubePlayer, { YoutubeIframeRef } from "react-native-youtube-iframe";
 import Context from '../../AppContext';
+import { isOverlapping } from '../../Methods';
 const midURL = "https://raw.githubusercontent.com/AlenToma/rhythmgame/main/midtest.mid";
+const videoId = "poLp-pJphWw";
 let currentTime = 0;
 let logged = false;
+let loggPos = false;
+let ticks = 0;
 const calculate = (note: Note,
     position: Position,
     height: number,
@@ -19,11 +23,12 @@ const calculate = (note: Note,
     currentTime: number,
     addToPos?: boolean
 ) => {
-
-    const hTop = position && position.top > 0 ? height - position.top : height;
+     height += note.position?.height ?? 0
+    const hTop = addToPos && position ? height - position.top : height;
     const applyData = () => {
         const bpm = file.file.header.tempos[0].bpm;
-        const crotchet = bpm / 60.00;
+       //const bpm = 30;
+        const crotchet = bpm / 60;
         const timer = ((crotchet / hTop) * 1000);
         const step = 3;
         if (!logged) {
@@ -39,13 +44,14 @@ const calculate = (note: Note,
         }
     }
     const bpmInfo = applyData()
-    let time = (note.time);
+    let time = note.time;
+    let secondsPerBeat = (1 / bpmInfo.crotchet);
     const noteHeight = position.height
-    const timeDis = (currentTime - time);
+    const timeDis = ((currentTime + 0.1 ) - time);
 
-    const speed = (hTop / time) * bpmInfo.timer;
-    let songposition = (timeDis * speed);
-    if (addToPos && songposition >noteHeight)
+    const speed = (hTop / secondsPerBeat)   
+    let songposition = (timeDis * speed) ;
+    if (addToPos && songposition > noteHeight)
         songposition += position.top;
     const y = songposition;
     //console.log(currentTime,time, noteHeight)
@@ -64,10 +70,10 @@ const calculate = (note: Note,
         speed: speed,
         ...bpmInfo
     }
-
 }
 
 const MoveFinger = (entities: any, { touches }: any) => {
+    ticks++;
     //console.log("test")
     //-- I'm choosing to update the game state (entities) directly for the sake of brevity and simplicity.
     //-- There's nothing stopping you from treating the game state as immutable and returning a copy..
@@ -76,37 +82,76 @@ const MoveFinger = (entities: any, { touches }: any) => {
     const height = Dimensions.get("window").height;
     const screen = entities[1] as IScreen;
     const keys = Object.keys(entities);
-    for (const key of keys.reverse()) {
+    const positions = {} as any;
+    for (const key of keys) {
         const component = entities[key] as INoteTick;
 
-        if (component.type != "Note")
+        if (component.type != "Note" || component.overlaping)
             continue;
 
         if (!component.enabled && component.position.top + component.position.height < height) {
             const data = calculate(component.note, component.position, height, screen.file, screen.player.getTime());
             //console.log("enabled", component.note.name, component.panel)
             if (data.top != undefined) {
-                component.position = { ...component.position, top: data.top - component.position.height, noteCalculatedTick: data };
-                component.enabled = true;
+                positions[key] = {
+                    ...component.position,
+                    top: data.top - component.position.height,
+                    noteCalculatedTick: data,
+                    panelType: component.panel
+                };
+                if (isOverlapping(Object.values(positions), positions[key])) {
+                    component.enabled = false;
+                    component.overlaping = true;
+                    delete positions[key];
+                    console.log("overlapping")
+                } else
+                    component.enabled = true;
+
             }
         } else if (component.enabled && component.position.noteCalculatedTick) {
             const data = calculate(component.note,
-                 component.position,
-                  height,
-                   screen.file,
-                    screen.player.getTime(), true);
+                component.position,
+                height,
+                screen.file,
+                screen.player.getTime(), true);
+
             if (component.position.top + component.position.height > height) {
                 component.enabled = false;
             }
 
             if (data.top != undefined) {
-                component.position = {
+                positions[key] = {
                     ...component.position,
-                    top: data.top
-                };
+                    top: data.top,
+                    panelType: component.panel
+                }
+                if (isOverlapping(Object.values(positions), positions[key])) {
+                    component.enabled = false;
+                    component.overlaping = true;
+                    delete positions[key];
+                    console.log("overlapping")
+                }
             }
 
         }
+    }
+    if (!loggPos) {
+        console.log(positions)
+        loggPos = true;
+    }
+    const addedComponents = [] as Position[];
+    for (const key of keys.
+        filter((key) => !(entities[key].type != "Note" || positions[key] === undefined || !entities[key].enabled))) {
+        const component = entities[key] as INoteTick;
+        positions[key].panelType = component.panel;
+        if (addedComponents.length > 0 && isOverlapping(addedComponents, positions[key])) {
+            component.enabled = false;
+            component.overlaping = true;
+            console.log("overlapping --- 1")
+            continue;
+        }
+        component.position = { ...positions[key], top: positions[key].top }
+        addedComponents.push(component.position)
     }
     if (screen && screen.player) {
         /* screen.leftLine?.forEach(x => {
@@ -232,7 +277,7 @@ export default () => {
                     height={200}
                     width={200}
                     play={true}
-                    videoId={"JprU54xX2aM"}
+                    videoId={videoId}
                     onChangeState={(event) => {
                         console.log(event)
                         if (event == "playing")

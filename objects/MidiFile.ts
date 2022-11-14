@@ -15,7 +15,7 @@ export class MidiFile {
         this.currentLineIndex = undefined;
         this.noteIndex = 0;
         this.max = 10000;
-        this.btnHeight = 50;
+        this.btnHeight = 90;
         this.renderedNotes = 0;
         this.file = mFile;
         this.notes = mFile.tracks[0].notes;
@@ -40,7 +40,11 @@ export class MidiFile {
         return this.lines[index];
     }
 
-    getFirstNote(){
+    getLastLine() {
+        return this.lines.flatMap(x => x.filter(f => f.time == this.gameTime)).last() as Note;
+    }
+
+    getFirstNote() {
         return this.lines[0][0];
     }
 
@@ -66,10 +70,6 @@ export class MidiFile {
 
     add() {
         const line = this.line();
-        const noteIndex = this.lines.reduce((v, c) => {
-            v += c.length;
-            return v;
-        }, 0)
         const note = this.notes[this.noteIndex];
         const h = (note.duration * this.btnHeight) + this.btnHeight;
         const y = (this.height - (this.height * note.time)) + h;
@@ -84,7 +84,7 @@ export class MidiFile {
             }
         } as Note;
 
-        if (!this.isOverlapping(line, node) && !this.isOverlapping(this.nextLine(), node)) {
+        if (node.time > 0 && !this.isOverlapping(line, node) && !this.isOverlapping(this.nextLine(), node)) {
             line.push(node);
             if (node.time > this.gameTime)
                 this.gameTime = node.time;

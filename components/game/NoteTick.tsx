@@ -16,15 +16,15 @@ export default ({ note, position, panel, enabled }: INoteTick) => {
     let left = "0%";
 
     if (panel == "Left")
-        left = "19%";
+        left = "7%";
 
     if (panel == "Middle")
-        left = "43%";
+        left = "37%";
 
     if (panel == "Right")
-        left = "65%";
+        left = "67%";
 
-    return (<View style={[style.block, { ...position }, { left }]}>
+    return (<View style={[style.block, { ...position }, { left, width:"25%" }]}>
         <Text>
             {note.name + " " +left}
         </Text>
@@ -36,9 +36,11 @@ export default ({ note, position, panel, enabled }: INoteTick) => {
 
 const style = StyleSheet.create({
     block: {
-        backgroundColor: "red",
         borderColor: "white",
-        position: "absolute"
+        position: "absolute",
+        borderRadius:10,
+        borderWidth:1,
+        backgroundColor:"white"
     }
 
 });
