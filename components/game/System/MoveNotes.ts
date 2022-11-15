@@ -12,12 +12,15 @@ export default (entities: any, { touches }: any) => {
             return entities;
         waiting = true;
 
+      
         const deleteEntity = (key: any) => {
             if (entities[key]) {
                 delete entities[key];
             }
         }
         const infoHolder = GlobalState.getItem();
+    
+
         if (infoHolder === undefined || infoHolder.file.renderedNotes === undefined)
         {
             console.error("infoHolder cannot be null")
@@ -25,7 +28,7 @@ export default (entities: any, { touches }: any) => {
         }
         infoHolder.ticks++;
         const height = infoHolder.windowSize.height;
-        const screen = entities.screen;
+        const screen = entities.screen as IScreen;
         const positions = {} as any;
         for (const component of infoHolder.file.renderedNotes) {
             if (component.position.top > height) {
@@ -84,9 +87,7 @@ export default (entities: any, { touches }: any) => {
 
         }
         waiting = false
-        if (screen) {
 
-        }
         return entities;
     } catch (e) {
         console.error(e);

@@ -59,6 +59,7 @@ export type Midi = {
 }
 
 export type IScreen = {
+    glowLines: PanelPosition[]
 }
 
 export type INoteTick = {

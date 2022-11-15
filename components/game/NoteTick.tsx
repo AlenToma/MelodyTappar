@@ -1,18 +1,22 @@
 import { INoteTick } from '../../types';
 import React, { useEffect, useRef, useState } from 'react';
-import { GestureResponderEvent, StyleSheet, View, Text, Button, SafeAreaView } from 'react-native';
-import objectUseState from '@alentoma/usestate';
+import { Vibration, StyleSheet, View } from 'react-native';
 import Context from '../../AppContext';
-import HttpClient from '../../objects/HttpClient';
-import globalItem from '../../objects/GlobalState';
+
 
 
 export default ({ note, position, panel, enabled, touched }: INoteTick) => {
     const appContext = React.useContext(Context)
     const lineGlow = useRef(false);
     const counter = useRef(0);
+    const ttouched = useRef(false as boolean | undefined);
     if (!enabled)
         return null;
+
+    if (touched && ttouched.current !== touched) {
+        Vibration.vibrate(10)
+    }
+    ttouched.current = touched;
     counter.current++;
     if (counter.current % 30 === 0)
         lineGlow.current = !lineGlow.current;

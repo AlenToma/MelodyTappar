@@ -75,7 +75,8 @@ export default () => {
     const entities = () => {
         const data = {
             screen: {
-                renderer: Screen
+                renderer: Screen,
+                glowLines: []
             }
         } as any
         let index = 2;
