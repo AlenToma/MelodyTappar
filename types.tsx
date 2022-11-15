@@ -1,6 +1,6 @@
 import { MidiFile } from "./objects/MidiFile";
 import { YoutubeIframeRef } from "react-native-youtube-iframe";
-export type PanelType = "Left" | "Middle" | "Right";
+export type PanelPosition = "Left" | "Middle" | "Right";
 export type Note = {
     time: number;
     duration: number;
@@ -10,7 +10,9 @@ export type Note = {
     ticks: number;
     velocity: number;
     enabled: boolean;
-    position?: Position
+    position: Position;
+    noteIndex:number;
+    panelPosition: PanelPosition
 }
 
 export type NoteCalculatedTick = {
@@ -27,7 +29,7 @@ export type Position = {
     height: number;
     width: number;
     noteCalculatedTick?: NoteCalculatedTick,
-    panelType?: PanelType
+    panelType?: PanelPosition
 }
 
 export type Tracks = {
@@ -60,7 +62,7 @@ export type IScreen = {
 }
 
 export type INoteTick = {
-    panel: PanelType,
+    panel: PanelPosition,
     note: Note,
     position: Position,
     enabled?: boolean,
@@ -68,7 +70,7 @@ export type INoteTick = {
     touched?: boolean
 } & ObjectType
 
-export type WindowPropeties ={
+export type WindowPropeties = {
     height: number;
     width: number;
 }
@@ -86,6 +88,5 @@ export type ObjectType = {
 }
 
 export type AppContext = {
-    windowSize: WindowPropeties,
-    inforHolder: InfoBeholder
+    windowSize: WindowPropeties
 }

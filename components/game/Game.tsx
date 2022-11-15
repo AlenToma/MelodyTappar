@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View, Dimensions, StatusBar } from 'react-native';
+import { StyleSheet, Text, View, Dimensions, StatusBar, SafeAreaView } from 'react-native';
 import { Note, Midi, IScreen, INoteTick, Position, InfoBeholder } from '../../types';
 import NoteTick from './NoteTick';
 import objectUseState from '@alentoma/usestate'
@@ -13,6 +13,8 @@ import { isOverlapping } from '../../Methods';
 import InfoHolder from './InfoHolder';
 import MoveNotes from './System/MoveNotes';
 import Touches from './System/Touches';
+import GlobalState from '../../objects/GlobalState';
+
 const midURL = "https://raw.githubusercontent.com/AlenToma/rhythmgame/main/midtest.mid";
 const videoId = "poLp-pJphWw";
 
@@ -21,6 +23,7 @@ export default () => {
     const state = objectUseState({
         file: undefined as MidiFile | undefined,
         playing: false,
+        init: false
     }, true);
 
     const [time, setTime] = useState(0);
@@ -30,16 +33,17 @@ export default () => {
     React.useEffect(() => {
         (async () => {
             const midiFile = (await HttpClient.GetJson(midURL)) as Midi;
-            const file = new MidiFile(midiFile, appContext.windowSize.height);
+            const file = new MidiFile(midiFile, appContext.windowSize);
             await file.build();
-            appContext.inforHolder = {
+            GlobalState.setItem({
                 windowSize: appContext.windowSize,
                 ticks: 0,
                 currentVideoTime: 0,
                 file: file,
                 score: 0
-            } as InfoBeholder;
+            });
             state.file = file;
+            console.log(GlobalState.getItem().file.renderedNotes?.length)
         })();
         return () => clearTimeout(timer.current);
         // timer.current = setInterval(() => currentTime += 0.01, 1)
@@ -60,8 +64,8 @@ export default () => {
     const validateCurrentTime = async () => {
         clearTimeout(timer.current);
         if (playerRef.current) {
-            appContext.inforHolder.currentVideoTime = await playerRef.current.getCurrentTime();
-            setTime(appContext.inforHolder.currentVideoTime)
+            GlobalState.getItem().currentVideoTime = await playerRef.current.getCurrentTime();
+            setTime(GlobalState.getItem().currentVideoTime)
         }
 
         timer.current = setTimeout(validateCurrentTime, 100);
@@ -71,85 +75,48 @@ export default () => {
     const entities = () => {
         const data = {
             screen: {
-                renderer: Screen,
-            },
-            infoHolder: appContext.inforHolder
+                renderer: Screen
+            }
         } as any
         let index = 2;
-        state.file?.lines[0].forEach(x => data[index++] = {
-            renderer: NoteTick,
-            position: { ...x.position, left: 0.07 * appContext.windowSize.width },
-            note: x,
-            panel: "Left",
-            enabled: false,
-            type: "Note"
-        });
-
-        state.file?.lines[1].forEach(x => data[index++] = {
-            renderer: NoteTick,
-            position: { ...x.position, left: 0.37 * appContext.windowSize.width },
-            note: x,
-            panel: "Middle",
-            enabled: false,
-            type: "Note"
-        });
-
-        state.file?.lines[2].forEach(x => data[index++] = {
-            renderer: NoteTick,
-            position: { ...x.position, left: 0.67 * appContext.windowSize.width },
-            note: x,
-            panel: "Right",
-            enabled: false,
-            type: "Note"
-        });
-
         return data;
     }
 
-    if (!appContext.inforHolder.file)
+    if (!state.file  || GlobalState.getItem().file.renderedNotes === undefined)
         return null;
 
     return (
         <>
-            <View style={{
-                position: "absolute",
-                top: 0,
-                alignItems: "center",
-                zIndex: 100,
-                height: 120,
-                width: 200,
-                backgroundColor: "red"
-            }}>
-                <YoutubePlayer
-                    ref={playerRef}
-                    height={200}
-                    width={200}
-                    play={true}
-                    videoId={videoId}
-                    onChangeState={(event) => {
-                        console.log(event)
-                        if (event == "playing")
-                            state.playing = true;
-                        if (["paused", "ended"].includes(event)) {
-                            state.playing = false;
-                        }
-                    }}
-                />
-                <Text style={{ fontSize: 15, color: "white" }}>{time}</Text>
-            </View>
+            <SafeAreaView style={styles.container}>
+                <View style={styles.youtubeContainer}>
+                    <YoutubePlayer
+                        ref={playerRef}
+                        height={200}
+                        width={200}
+                        play={true}
+                        videoId={videoId}
+                        onChangeState={(event) => {
+                            console.log(event)
+                            if (event == "playing")
+                                state.playing = true;
+                            if (["paused", "ended"].includes(event)) {
+                                state.playing = false;
+                            }
+                        }}
+                    />
+                </View>
+                <GameEngine
+                    style={[styles.gameContainer]}
+                    systems={[Touches,MoveNotes]}
+                    running={state.playing}
+                    entities={entities()}>
 
-            {
-                playerRef.current ? (
-                    <GameEngine
-                        style={[styles.container, { zIndex: 99 }]}
-                        systems={[MoveNotes]}
-                        running={state.playing}
-                        entities={entities()}>
-                        <StatusBar hidden={true} />
+                    <Text style={{ fontSize: 15, color: "white" }}>{time}</Text>
+                    <StatusBar hidden={true} />
 
-                    </GameEngine>
-                ) : null
-            }
+                </GameEngine>
+
+            </SafeAreaView>
         </>
     )
 }
@@ -158,6 +125,29 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#FFF",
+        width: "100%"
+    },
+    youtubeContainer: {
+        position: "absolute",
+        top: "5%",
+        borderColor: "#CCC",
+        borderWidth: 1,
+        alignItems: "center",
+        zIndex: 100,
+        height: 120,
+        width: 200,
+        left: "25%",
+        justifyContent: "center",
+        overflow: "hidden",
+        backgroundColor: "#000"
+    },
+    gameContainer: {
+        position: "absolute",
+        top: 0,
+        left: 0,
+        alignItems: "center",
+        zIndex: 99,
+        height: "100%",
         width: "100%"
     }
 });

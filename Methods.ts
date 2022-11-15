@@ -2,6 +2,8 @@ import { MidiFile } from "./objects/MidiFile";
 import { Note, Position } from "./types";
 let loggedbpm = false;
 export const isOverlapping = (intervals: Position[], newInterval: Position) => {
+    if (intervals.length <= 0)
+        return false;
     const a = newInterval.top;
     const b = newInterval.top + newInterval.height;
     let counter = 0;
@@ -15,7 +17,7 @@ export const isOverlapping = (intervals: Position[], newInterval: Position) => {
                 return true;
             counter++;
         }
-        if (counter > 2)
+        if (counter >= 2)
             return true;
     }
 
@@ -33,7 +35,7 @@ export const calculate = (note: Note,
     const hTop = height - position.top;
     const applyData = () => {
         const bpm = file.file.header.tempos[0].bpm;
-       // const bpm = 120;
+        // const bpm = 120;
         const crotchet = bpm / 60;
         const timer = ((crotchet / hTop) * 10000);
         return {
@@ -48,18 +50,18 @@ export const calculate = (note: Note,
     }
     const bpmInfo = applyData();
 
-    if(!loggedbpm){
-        loggedbpm= true;
+    if (!loggedbpm) {
+        loggedbpm = true;
         console.log(bpmInfo)
     }
 
     const totalTime = file.gameTime;
-    const step = file.renderedNotes * 10;
-    const stepsToAdd = (hTop  / step) ;
- 
+    const step = 3300;
+    const stepsToAdd = (hTop / step);
+
     if (stepsToAdd < 0 || position.top > height) {
         console.log("stepsToAdd", stepsToAdd)
         return;
-    } 
+    }
     position.top += ((stepsToAdd * bpmInfo.crotchet) * bpmInfo.timer);
 }

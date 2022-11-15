@@ -1,101 +1,91 @@
-import { Midi, Note } from "../types";
+import { isOverlapping } from "../Methods";
+import { Midi, Note, PanelPosition, Position, WindowPropeties } from "../types";
 export class MidiFile {
-    public lines: [Note[], Note[], Note[]];
-    currentLineIndex?: number;
     noteIndex: number;
     max: number;
     btnHeight: number;
-    renderedNotes: number;
     file: Midi;
     gameTime: number;
+    renderedNotes: Note[];
+    
     private notes: Note[];
-    private height: number;
-    constructor(mFile: Midi, screenHeight: number) {
-        this.lines = [[], [], []]
-        this.currentLineIndex = undefined;
+    private windowPropeties: WindowPropeties
+    constructor(mFile: Midi, windowPropeties: WindowPropeties) {
         this.noteIndex = 0;
         this.max = 10000;
         this.btnHeight = 90;
-        this.renderedNotes = 0;
         this.file = mFile;
+        this.renderedNotes = [];
         this.notes = mFile.tracks[0].notes;
-        this.height = screenHeight;
         this.gameTime = 0;
+        this.windowPropeties = windowPropeties;
     }
 
-    line() {
-        if (this.currentLineIndex === undefined)
-            this.currentLineIndex = 0;
-        else if (this.currentLineIndex + 1 < this.lines.length)
-            this.currentLineIndex++;
-        else this.currentLineIndex = 0;
-        return this.lines[this.currentLineIndex];
+    setNoteX(note: Note) {
+        if (note.panelPosition === "Left")
+            note.position.left = 0.07 * this.windowPropeties.width;
+        else
+            if (note.panelPosition === "Middle")
+                note.position.left = 0.37 * this.windowPropeties.width;
+            else
+                if (note.panelPosition === "Right")
+                    note.position.left = 0.67 * this.windowPropeties.width;
+        return note;
     }
 
-    nextLine() {
-        let index = this.currentLineIndex || 0;
-        if (index + 1 < this.lines.length)
-            index++;
-        else index = 0;
-        return this.lines[index];
+    private nextPanelPosition(): PanelPosition {
+        if (this.renderedNotes.length <= 0)
+            return "Left";
+        const lastNotes = this.getLastNote();
+        if (lastNotes.panelPosition === "Left")
+            return "Middle";
+
+        if (lastNotes.panelPosition === "Middle")
+            return "Right";
+
+        if (lastNotes.panelPosition === "Right")
+            return "Left";
+        return "Left";
     }
 
-    getLastLine() {
-        return this.lines.flatMap(x => x.filter(f => f.time == this.gameTime)).last() as Note;
+    getLastNote() {
+        return this.renderedNotes.last() as Note;
     }
 
     getFirstNote() {
-        return this.lines[0][0];
-    }
-
-    isOverlapping(intervals: Note[], newInterval: Note) {
-        if (!newInterval.position)
-            return false;
-        const a = newInterval.position.top;
-        const b = newInterval.position.top + newInterval.position.height;
-
-        for (const interval of intervals) {
-            if (!interval.position)
-                continue;
-            const c = interval.position.top;
-            const d = interval.position.top + interval.position.height;
-            if (a < d && b > c) {
-                return true;
-            }
-        }
-
-        return false;
+        return this.renderedNotes.findAt(0) as Note;
     }
 
 
     add() {
-        const line = this.line();
+        const panelPositionPosition = this.nextPanelPosition();
         const note = this.notes[this.noteIndex];
         const h = (note.duration * this.btnHeight) + this.btnHeight;
-        const y = (this.height - (this.height * note.time)) + h;
-        const node = {
+        const y = (this.windowPropeties.height - (this.windowPropeties.height * note.time)) + h;
+        const node = this.setNoteX({
             ...note, ...{
+                noteIndex: this.renderedNotes.length,
+                panelPosition: panelPositionPosition,
                 position: {
                     top: y,
                     height: h,
                     width: 62,
-
+                    panelType: panelPositionPosition
                 }
             }
-        } as Note;
-
-        if (node.time > 0 && !this.isOverlapping(line, node) && !this.isOverlapping(this.nextLine(), node)) {
-            line.push(node);
+        } as Note);
+        const positions = this.renderedNotes.map(x => x.position) as Position[]
+        if (node.time > 0 && !isOverlapping(positions, node.position as Position)) {
+            this.renderedNotes.push(node);
             if (node.time > this.gameTime)
                 this.gameTime = node.time;
-            this.renderedNotes++;
         }
 
         this.noteIndex++;
     }
 
     async build() {
-        while (this.noteIndex < this.notes.length && this.renderedNotes < this.max) {
+        while (this.noteIndex < this.notes.length && this.renderedNotes.length < this.max) {
             this.add();
         }
     }

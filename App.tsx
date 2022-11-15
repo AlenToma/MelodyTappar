@@ -6,7 +6,7 @@ import Game from './components/game/Game';
 import { AppContext, InfoBeholder } from './types';
 import objectUsestate from '@alentoma/usestate'
 import Context from './AppContext';
-
+import GlobalState from './objects/GlobalState';
 
 
 export default function App() {
@@ -14,8 +14,7 @@ export default function App() {
     windowSize: {
       width: Dimensions.get("window").width,
       height: Dimensions.get("window").height
-    },
-    inforHolder: {} as InfoBeholder
+    }
   }, true)
 
 

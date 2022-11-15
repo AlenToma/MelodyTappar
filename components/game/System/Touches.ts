@@ -3,41 +3,61 @@ import React, { useEffect, useRef, useState } from 'react';
 import { InfoBeholder, INoteTick, IScreen, Position } from "../../../types";
 import { calculate, isOverlapping } from "../../../Methods";
 import { TouchEvent } from "react-native-game-engine"
+import GlobalState from "../../../objects/GlobalState";
 
 export default (entities: any, { touches }: { touches: TouchEvent[] }) => {
     try {
-        const infoHolder = entities.infoHolder as InfoBeholder;
+        const infoHolder = GlobalState.getItem();
+        if (infoHolder === undefined || infoHolder.file.renderedNotes === undefined)
+            {
+                console.error("infoHolder cannot be null")
+                return entities;
+            }
+        const bottom = infoHolder.windowSize.height - (0.2 * infoHolder.windowSize.height);
         const keys = Object.keys(entities);
+        const isTouched = (component: INoteTick, x: number, y: number) => {
+            let top = component.position.top - (bottom);
+            let topBottom = top + (component.position.height +(bottom ));
 
-        touches.filter(x => x.type === "press").forEach(x => {
+            const left = component.position.left;
+            const right = component.position.left + component.position.width;
+
+            //const y2 = y -  (component.position.height / 2);
+
+            if (((y >= top && y <= topBottom))
+                &&
+                (x >= left && x <= right)
+            ) {
+                return true;
+            }
+            return false;
+        }
+        touches = touches.filter((x: any) => (x.type === "press" || x.type === "end" || x.type == "start") && !x.handled)
+        touches.forEach(x => {
+            const xAny = x as any;
             for (const key of keys) {
                 const component = entities[key] as INoteTick;
 
 
-                if (!component || component.type != "Note" || !component.enabled) {
+                if (!component ||
+                    component.type != "Note"
+                    || !component.enabled
+                    || xAny.handled ||
+                    component.touched ||
+                    component.position.top + component.position.height < bottom) {
                     continue;
                 }
-                let top1 = component.position.top;
-                let top2 = component.position.top + component.position.height;
-
-                const y1 = x.event.pageY + (component.position.height / 2);
-                const y2 = x.event.pageY;
-                const left1 = component.position.left;
-                const left2 = component.position.left + component.position.width;
-
-
-
-                const x1 = x.event.pageX;
-                if (((y1 > top1 && y1 < top2) || (y2 > top1 && y2 < top2))
-                    &&
-                    (x1 > left1 && left2 > x1)
-                ) {
-                    // console.log(component.position)
+                if (isTouched(component, x.event.locationX, x.event.locationY)
+                    ||
+                    isTouched(component, x.event.pageX, x.event.pageY)) {
                     infoHolder.score++;
                     component.touched = true;
+                    xAny.handled = true;
                 }
+
             }
         });
+
 
         return entities;
 
