@@ -33,7 +33,7 @@ export default (entities: any, { touches }: { touches: TouchEvent[] }) => {
                     (x1 > left1 && left2 > x1)
                 ) {
                     // console.log(component.position)
-                    //infoHolder.score++;
+                    infoHolder.score++;
                     component.touched = true;
                 }
             }
