@@ -1,32 +1,24 @@
 import { INoteTick } from '../../types';
 import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { GestureResponderEvent, StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import objectUseState from '@alentoma/usestate';
 import Context from '../../AppContext';
+import HttpClient from '../../objects/HttpClient';
 
-export default ({ note, position, panel, enabled }: INoteTick) => {
+export default ({ note, position, panel, enabled, touched }: INoteTick) => {
+
     const appContext = React.useContext(Context)
-    useEffect(()=> {
-        if (enabled){
-          //  console.log("hhahaha enabled", position)
-        }
-    },[enabled])
+
+
     if (!enabled)
         return null;
-    let left = "0%";
 
-    if (panel == "Left")
-        left = "7%";
-
-    if (panel == "Middle")
-        left = "37%";
-
-    if (panel == "Right")
-        left = "67%";
-
-    return (<View style={[style.block, { ...position }, { left, width:"25%" }]}>
+    return (<View
+        style={[style.block,
+        { ...position },
+        { width: "25%", opacity: touched ? 0.5 : 1, backgroundColor: !touched ? "white" : "red" }]}>
         <Text>
-            {note.name + " " +left}
+            {note.name + " " + panel}
         </Text>
         <Text>
             {panel}
@@ -36,11 +28,13 @@ export default ({ note, position, panel, enabled }: INoteTick) => {
 
 const style = StyleSheet.create({
     block: {
-        borderColor: "white",
+        borderColor: "#CCC",
         position: "absolute",
-        borderRadius:10,
-        borderWidth:1,
-        backgroundColor:"white"
+        borderRadius: 10,
+        borderWidth: 5,
+        backgroundColor: "white",
+        zIndex: 99,
+        padding: 5
     }
 
 });

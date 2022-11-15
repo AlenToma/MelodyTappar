@@ -57,27 +57,35 @@ export type Midi = {
 }
 
 export type IScreen = {
-    file: MidiFile,
-    player: {
-        getTime: () => number
-    }
-} & ObjectType
+}
 
 export type INoteTick = {
     panel: PanelType,
     note: Note,
     position: Position,
     enabled?: boolean,
-    overlaping?: boolean
+    overlaping?: boolean,
+    touched?: boolean
 } & ObjectType
 
+export type WindowPropeties ={
+    height: number;
+    width: number;
+}
+
+export type InfoBeholder = {
+    ticks: number;
+    currentVideoTime: number;
+    file: MidiFile;
+    windowSize: WindowPropeties;
+    score: number;
+}
+
 export type ObjectType = {
-    type: "Note" | "Screen"
+    type: "Note" | "Screen" | "InfoHolder"
 }
 
 export type AppContext = {
-    windowSize: {
-        width: number,
-        height: number
-    }
+    windowSize: WindowPropeties,
+    inforHolder: InfoBeholder
 }

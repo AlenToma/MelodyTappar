@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, Dimensions, StatusBar } from 'react-native';
-import { Note, Midi, IScreen, INoteTick, Position } from '../../types';
+import { Note, Midi, IScreen, INoteTick, Position, InfoBeholder } from '../../types';
 import NoteTick from './NoteTick';
 import objectUseState from '@alentoma/usestate'
 import { GameEngine } from "react-native-game-engine"
@@ -10,168 +10,19 @@ import { MidiFile } from '../../objects/MidiFile';
 import YoutubePlayer, { YoutubeIframeRef } from "react-native-youtube-iframe";
 import Context from '../../AppContext';
 import { isOverlapping } from '../../Methods';
+import InfoHolder from './InfoHolder';
+import MoveNotes from './System/MoveNotes';
+import Touches from './System/Touches';
 const midURL = "https://raw.githubusercontent.com/AlenToma/rhythmgame/main/midtest.mid";
 const videoId = "poLp-pJphWw";
-let currentTime = 0;
-let logged = false;
-let loggPos = false;
-let ticks = 0;
-const calculate = (note: Note,
-    position: Position,
-    height: number,
-    file: MidiFile,
-    currentTime: number,
-    addToPos?: boolean
-) => {
-     height += note.position?.height ?? 0
-    const hTop = addToPos && position ? height - position.top : height;
-    const applyData = () => {
-        const bpm = file.file.header.tempos[0].bpm;
-       //const bpm = 30;
-        const crotchet = bpm / 60;
-        const timer = ((crotchet / hTop) * 1000);
-        const step = 3;
-        if (!logged) {
-            logged = true;
-            console.log("bpm", bpm, "crotchet", crotchet, "timer", timer, "step", step, "height", height)
-
-        }
-        return {
-            bpm,
-            crotchet,
-            timer,
-            step
-        }
-    }
-    const bpmInfo = applyData()
-    let time = note.time;
-    let secondsPerBeat = (1 / bpmInfo.crotchet);
-    const noteHeight = position.height
-    const timeDis = ((currentTime + 0.1 ) - time);
-
-    const speed = (hTop / secondsPerBeat)   
-    let songposition = (timeDis * speed) ;
-    if (addToPos && songposition > noteHeight)
-        songposition += position.top;
-    const y = songposition;
-    //console.log(currentTime,time, noteHeight)
-    /* if (y > 0)
-         console.log("time", time,
-             "noteHeight", noteHeight,
-             "timeDis", timeDis,
-             "speed", speed,
-             "songposition", songposition,
-             "y", y,
-             "height", height,
-             "currentTime", currentTime);*/
-
-    return {
-        top: y >= noteHeight ? y : (isNaN(y) ? height - (noteHeight * 3) : undefined),
-        speed: speed,
-        ...bpmInfo
-    }
-}
-
-const MoveFinger = (entities: any, { touches }: any) => {
-    ticks++;
-    //console.log("test")
-    //-- I'm choosing to update the game state (entities) directly for the sake of brevity and simplicity.
-    //-- There's nothing stopping you from treating the game state as immutable and returning a copy..
-    //-- Example: return { ...entities, t.id: { UPDATED COMPONENTS }};
-    //-- That said, it's probably worth considering performance implications in either case.
-    const height = Dimensions.get("window").height;
-    const screen = entities[1] as IScreen;
-    const keys = Object.keys(entities);
-    const positions = {} as any;
-    for (const key of keys) {
-        const component = entities[key] as INoteTick;
-
-        if (component.type != "Note" || component.overlaping)
-            continue;
-
-        if (!component.enabled && component.position.top + component.position.height < height) {
-            const data = calculate(component.note, component.position, height, screen.file, screen.player.getTime());
-            //console.log("enabled", component.note.name, component.panel)
-            if (data.top != undefined) {
-                positions[key] = {
-                    ...component.position,
-                    top: data.top - component.position.height,
-                    noteCalculatedTick: data,
-                    panelType: component.panel
-                };
-                if (isOverlapping(Object.values(positions), positions[key])) {
-                    component.enabled = false;
-                    component.overlaping = true;
-                    delete positions[key];
-                    console.log("overlapping")
-                } else
-                    component.enabled = true;
-
-            }
-        } else if (component.enabled && component.position.noteCalculatedTick) {
-            const data = calculate(component.note,
-                component.position,
-                height,
-                screen.file,
-                screen.player.getTime(), true);
-
-            if (component.position.top + component.position.height > height) {
-                component.enabled = false;
-            }
-
-            if (data.top != undefined) {
-                positions[key] = {
-                    ...component.position,
-                    top: data.top,
-                    panelType: component.panel
-                }
-                if (isOverlapping(Object.values(positions), positions[key])) {
-                    component.enabled = false;
-                    component.overlaping = true;
-                    delete positions[key];
-                    console.log("overlapping")
-                }
-            }
-
-        }
-    }
-    if (!loggPos) {
-        console.log(positions)
-        loggPos = true;
-    }
-    const addedComponents = [] as Position[];
-    for (const key of keys.
-        filter((key) => !(entities[key].type != "Note" || positions[key] === undefined || !entities[key].enabled))) {
-        const component = entities[key] as INoteTick;
-        positions[key].panelType = component.panel;
-        if (addedComponents.length > 0 && isOverlapping(addedComponents, positions[key])) {
-            component.enabled = false;
-            component.overlaping = true;
-            console.log("overlapping --- 1")
-            continue;
-        }
-        component.position = { ...positions[key], top: positions[key].top }
-        addedComponents.push(component.position)
-    }
-    if (screen && screen.player) {
-        /* screen.leftLine?.forEach(x => {
-             const data = calculate(x, Dimensions.get("window").height, screen.file, screen.player.getTime());
-             if (x.position && data.top !== undefined) {
-                 console.log("enabled", x.name)
-                 x.position = { ...x.position, top: x.position.top + data.step };
-                 x.enabled = true
-             }
-         })*/
-    }
-    return entities;
-};
 
 export default () => {
+    const appContext = React.useContext(Context)
     const state = objectUseState({
         file: undefined as MidiFile | undefined,
-        playing: false
+        playing: false,
     }, true);
-    const appContext = React.useContext(Context)
+
     const [time, setTime] = useState(0);
     const timer = useRef<any>();
     const playerRef = useRef<YoutubeIframeRef>(null);
@@ -181,18 +32,18 @@ export default () => {
             const midiFile = (await HttpClient.GetJson(midURL)) as Midi;
             const file = new MidiFile(midiFile, appContext.windowSize.height);
             await file.build();
+            appContext.inforHolder = {
+                windowSize: appContext.windowSize,
+                ticks: 0,
+                currentVideoTime: 0,
+                file: file,
+                score: 0
+            } as InfoBeholder;
             state.file = file;
-            validateCurrentTime();
         })();
         return () => clearTimeout(timer.current);
         // timer.current = setInterval(() => currentTime += 0.01, 1)
     }, [])
-
-
-
-    React.useEffect(() => {
-        console.log("poistion Updated")
-    }, [state.file?.lines[0][0].position])
 
 
     useEffect(() => {
@@ -207,9 +58,10 @@ export default () => {
 
 
     const validateCurrentTime = async () => {
+        clearTimeout(timer.current);
         if (playerRef.current) {
-            currentTime = await playerRef.current.getCurrentTime();
-            setTime(currentTime)
+            appContext.inforHolder.currentVideoTime = await playerRef.current.getCurrentTime();
+            setTime(appContext.inforHolder.currentVideoTime)
         }
 
         timer.current = setTimeout(validateCurrentTime, 100);
@@ -218,19 +70,15 @@ export default () => {
 
     const entities = () => {
         const data = {
-            1: {
+            screen: {
                 renderer: Screen,
-                file: state.file,
-                type: "Screen",
-                player: {
-                    getTime: () => currentTime
-                }
-            }
+            },
+            infoHolder: appContext.inforHolder
         } as any
         let index = 2;
         state.file?.lines[0].forEach(x => data[index++] = {
             renderer: NoteTick,
-            position: x.position,
+            position: { ...x.position, left: 0.07 * appContext.windowSize.width },
             note: x,
             panel: "Left",
             enabled: false,
@@ -239,7 +87,7 @@ export default () => {
 
         state.file?.lines[1].forEach(x => data[index++] = {
             renderer: NoteTick,
-            position: x.position,
+            position: { ...x.position, left: 0.37 * appContext.windowSize.width },
             note: x,
             panel: "Middle",
             enabled: false,
@@ -248,7 +96,7 @@ export default () => {
 
         state.file?.lines[2].forEach(x => data[index++] = {
             renderer: NoteTick,
-            position: x.position,
+            position: { ...x.position, left: 0.67 * appContext.windowSize.width },
             note: x,
             panel: "Right",
             enabled: false,
@@ -258,7 +106,7 @@ export default () => {
         return data;
     }
 
-    if (!state.file)
+    if (!appContext.inforHolder.file)
         return null;
 
     return (
@@ -294,11 +142,11 @@ export default () => {
                 playerRef.current ? (
                     <GameEngine
                         style={[styles.container, { zIndex: 99 }]}
-                        systems={[MoveFinger]}
+                        systems={[MoveNotes]}
                         running={state.playing}
-                        entities={entities()}
-                    >
+                        entities={entities()}>
                         <StatusBar hidden={true} />
+
                     </GameEngine>
                 ) : null
             }
@@ -309,6 +157,7 @@ export default () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#FFF"
+        backgroundColor: "#FFF",
+        width: "100%"
     }
 });

@@ -3,23 +3,24 @@ import React from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Screen from './components/game/Screen';
 import Game from './components/game/Game';
-import { AppContext } from './types';
+import { AppContext, InfoBeholder } from './types';
 import objectUsestate from '@alentoma/usestate'
 import Context from './AppContext';
 
 
 
 export default function App() {
-  const state = objectUsestate({
+  const state = objectUsestate<AppContext>({
     windowSize: {
       width: Dimensions.get("window").width,
       height: Dimensions.get("window").height
-    }
-  }, false)
+    },
+    inforHolder: {} as InfoBeholder
+  }, true)
 
 
   return (
-    <Context.Provider value={{ windowSize: state.windowSize }}>
+    <Context.Provider value={state}>
       <View style={styles.container}>
         <Game />
       </View>
