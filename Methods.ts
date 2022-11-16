@@ -1,5 +1,5 @@
 import { MidiFile } from "./objects/MidiFile";
-import { Note, Position } from "./types";
+import {  Position, INote } from "./types";
 let loggedbpm = false;
 export const isOverlapping = (intervals: Position[], newInterval: Position) => {
     if (intervals.length <= 0)
@@ -24,32 +24,24 @@ export const isOverlapping = (intervals: Position[], newInterval: Position) => {
     return false;
 }
 
-export const calculate = (note: Note,
+/*export const calculate = (note: INote,
     position: Position,
-    height: number,
+    height: WindowPropeties,
     file: MidiFile,
-    currentTime: number,
-    addToPos?: boolean
+    currentTime: number
 ) => {
 
-    const hTop = height - position.top;
-    const applyData = () => {
-        const bpm = file.file.header.tempos[0].bpm;
-        // const bpm = 120;
-        const crotchet = bpm / 60;
-        const timer = ((crotchet / hTop) * 10000);
-        return {
-            bpm,
-            crotchet,
-            timer
-        }
-    }
+    const hTop = height.height - position.top;
+    const bpm = file.file.header.tempos[0].bpm;
+    const crotchet = bpm / 60;
+    const timer = ((crotchet / hTop) * 10000);
+    const bpmInfo= {bpm, crotchet, timer}
     if (hTop < 0) {
         console.log("hTop", hTop);
         return;
     }
-    const bpmInfo = applyData();
 
+    position.noteCalculatedTick = bpmInfo;
     if (!loggedbpm) {
         loggedbpm = true;
         console.log(bpmInfo)
@@ -59,9 +51,9 @@ export const calculate = (note: Note,
     const step = 3300;
     const stepsToAdd = (hTop / step);
 
-    if (stepsToAdd < 0 || position.top > height) {
+    if (stepsToAdd < 0 || position.top > height.height) {
         console.log("stepsToAdd", stepsToAdd)
         return;
     }
     position.top += ((stepsToAdd * bpmInfo.crotchet) * bpmInfo.timer);
-}
+}*/

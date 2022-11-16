@@ -1,7 +1,7 @@
 import { Dimensions } from "react-native";
 import React, { useEffect, useRef, useState } from 'react';
 import { InfoBeholder, INoteTick, IScreen, PanelPosition, Position } from "../../../types";
-import { calculate, isOverlapping } from "../../../Methods";
+import { isOverlapping } from "../../../Methods";
 import { TouchEvent } from "react-native-game-engine"
 import GlobalState from "../../../objects/GlobalState";
 
@@ -18,22 +18,29 @@ export default (entities: any, { touches }: { touches: TouchEvent[] }) => {
             console.error("infoHolder cannot be null")
             return entities;
         }
-        const bottom = infoHolder.windowSize.height - (0.2 * infoHolder.windowSize.height);
+        const bottom = (infoHolder.windowSize.height - infoHolder.windowSize.panelBottomHeight);
         const keys = Object.keys(entities);
         const isTouched = (component: INoteTick, x: number, y: number) => {
-            let top = component.position.top - (bottom);
-            let topBottom = top + (component.position.height + (bottom));
+            if (component.position.noteCalculatedTick) {
+                let speed =
+                    (((component.position.top) /
+                        component.position.noteCalculatedTick.bpm) *
+                        component.position.noteCalculatedTick.timer)
 
-            const left = component.position.left;
-            const right = component.position.left + component.position.width;
+                let top = component.position.top;
+                let topBottom = top + component.position.height;
 
-            //const y2 = y -  (component.position.height / 2);
+                let tTop = component.position.top - speed;
 
-            if (((y >= top && y <= topBottom))
-                &&
-                (x >= left && x <= right)
-            ) {
-                return true;
+                const left = component.position.left;
+                const right = component.position.left + component.position.width;
+
+                if (((y >= top && y <= topBottom) || (y >= tTop && y <= topBottom + speed))
+                    &&
+                    (x >= left && x <= right)
+                ) {
+                    return true;
+                }
             }
             return false;
         }
@@ -43,8 +50,6 @@ export default (entities: any, { touches }: { touches: TouchEvent[] }) => {
                 const xAny = x as any;
                 for (const key of keys) {
                     const component = entities[key] as INoteTick;
-
-
                     if (!component ||
                         component.type != "Note"
                         || !component.enabled

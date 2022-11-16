@@ -1,7 +1,7 @@
 import { Dimensions } from "react-native";
 import React, { useEffect, useRef, useState } from 'react';
-import { InfoBeholder, INoteTick, IScreen, Note, Position } from "../../../types";
-import { calculate, isOverlapping } from "../../../Methods";
+import { InfoBeholder, INoteTick, IScreen, INote, Position } from "../../../types";
+import { isOverlapping } from "../../../Methods";
 import Touches from "./Touches";
 import NoteTick from "../NoteTick";
 import GlobalState from "../../../objects/GlobalState";
@@ -12,17 +12,16 @@ export default (entities: any, { touches }: any) => {
             return entities;
         waiting = true;
 
-      
+
         const deleteEntity = (key: any) => {
-            if (entities[key]) {
+            if (entities[key] !== undefined) {
                 delete entities[key];
             }
         }
         const infoHolder = GlobalState.getItem();
-    
 
-        if (infoHolder === undefined || infoHolder.file.renderedNotes === undefined)
-        {
+
+        if (infoHolder === undefined || infoHolder.file.renderedNotes === undefined) {
             console.error("infoHolder cannot be null")
             return entities;
         }
@@ -31,20 +30,18 @@ export default (entities: any, { touches }: any) => {
         const screen = entities.screen as IScreen;
         const positions = {} as any;
         for (const component of infoHolder.file.renderedNotes) {
-            if (component.position.top > height) {
+            if (component.isOutOfRange()) {
                 component.enabled = false;
                 deleteEntity(component.noteIndex);
                 continue;
             }
-
-            calculate(component, component.position, height, infoHolder.file, infoHolder.currentVideoTime);
-            if (component.position.top > height) {
-                component.enabled = false;
+            const position = component.tick(infoHolder.currentVideoTime);
+            if (component.isOutOfRange()) {
                 deleteEntity(component.noteIndex);
                 continue;
             }
 
-            if (component.position.top > 0 && component.position.top < height) {
+            if (position.top > 0 && position.top < height * 60) {
                 positions[component.noteIndex] = {
                     ...component.position
                 };
@@ -56,33 +53,32 @@ export default (entities: any, { touches }: any) => {
         const posKeys = Object.keys(positions);
         while (posKeys.length > 0) {
             const key = posKeys.shift() as string;
-            const component = infoHolder.file.renderedNotes.findAt(parseInt(key.toString())) as Note;
+            const component = infoHolder.file.renderedNotes.findAt(parseInt(key.toString())) as INote;
             if (addedComponents.length > 0 && isOverlapping(addedComponents, positions[key])) {
                 component.enabled = false;
-                deleteEntity(key);
                 console.log("overlapping --- 1")
                 continue;
             }
 
             addedComponents.push(component.position)
-            if (entities[key] === undefined) {
+            if (!entities[key]) {
                 entities[key] = {
                     renderer: NoteTick,
                     position: {
-                        ...component.position,
-                        left: 0.07 * infoHolder.windowSize.width,
+                        ...positions[key],
                         top: (component.position.top - component.position.height) - 10
                     },
                     note: component,
-                    panel: component.panelPosition,
                     enabled: true,
                     type: "Note"
-                } as INoteTick
+                };
             } else {
-                entities[key].position = { ...positions[key], top: positions[key].top }
-                entities[key].enabled = true;
-                component.enabled = true;
-                //validateTouches(key, entities[key]);
+                const item = entities[key];
+                if (item) {
+                    item.position = { ...positions[key], top: positions[key].top }
+                    item.enabled = true;
+                    component.enabled = true;
+                }
             }
 
         }

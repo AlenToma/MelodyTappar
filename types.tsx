@@ -1,7 +1,9 @@
 import { MidiFile } from "./objects/MidiFile";
 import { YoutubeIframeRef } from "react-native-youtube-iframe";
+import { WindowPropeties } from "./objects/WindowPropeties";
+import ScreenNotes from "./objects/ScreenNotes";
 export type PanelPosition = "Left" | "Middle" | "Right";
-export type Note = {
+export type INote = {
     time: number;
     duration: number;
     durationTicks: number;
@@ -11,16 +13,18 @@ export type Note = {
     velocity: number;
     enabled: boolean;
     position: Position;
-    noteIndex:number;
-    panelPosition: PanelPosition
+    noteIndex: number;
+    panelPosition: PanelPosition;
+    totalTick:number;
+    file: MidiFile;
+    tick: (videoTime: number) => Position;
+    isOutOfRange:()=> boolean;
 }
 
 export type NoteCalculatedTick = {
     bpm: number,
     crotchet: number,
-    timer: number,
-    step: number,
-    speed: number
+    timer: number
 }
 
 export type Position = {
@@ -38,7 +42,7 @@ export type Tracks = {
     endOfTrackTicks: number;
     controlChanges: any;
     pitchBends: any[];
-    notes: Note[];
+    notes: INote[];
     instrument: {
         family: string;
         number: number;
@@ -59,22 +63,18 @@ export type Midi = {
 }
 
 export type IScreen = {
-    glowLines: PanelPosition[]
+    glowLines: PanelPosition[],
+    notes:ScreenNotes<INoteTick>,
 }
 
 export type INoteTick = {
-    panel: PanelPosition,
-    note: Note,
+    note: INote,
     position: Position,
     enabled?: boolean,
     overlaping?: boolean,
     touched?: boolean
 } & ObjectType
 
-export type WindowPropeties = {
-    height: number;
-    width: number;
-}
 
 export type InfoBeholder = {
     ticks: number;
@@ -87,6 +87,10 @@ export type InfoBeholder = {
 export type ObjectType = {
     type: "Note" | "Screen" | "InfoHolder"
 }
+
+export type Renderer<T> = {
+    renderer: any,
+} & T
 
 export type AppContext = {
     windowSize: WindowPropeties

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, Dimensions, StatusBar, SafeAreaView } from 'react-native';
-import { Note, Midi, IScreen, INoteTick, Position, InfoBeholder } from '../../types';
+import { INote, Midi } from '../../types';
 import NoteTick from './NoteTick';
 import objectUseState from '@alentoma/usestate'
 import { GameEngine } from "react-native-game-engine"
@@ -10,10 +10,10 @@ import { MidiFile } from '../../objects/MidiFile';
 import YoutubePlayer, { YoutubeIframeRef } from "react-native-youtube-iframe";
 import Context from '../../AppContext';
 import { isOverlapping } from '../../Methods';
-import InfoHolder from './InfoHolder';
 import MoveNotes from './System/MoveNotes';
 import Touches from './System/Touches';
 import GlobalState from '../../objects/GlobalState';
+import ScreenNotes from '../../objects/ScreenNotes';
 
 const midURL = "https://raw.githubusercontent.com/AlenToma/rhythmgame/main/midtest.mid";
 const videoId = "poLp-pJphWw";
@@ -76,14 +76,15 @@ export default () => {
         const data = {
             screen: {
                 renderer: Screen,
-                glowLines: []
+                glowLines: [],
+                notes: new ScreenNotes()
             }
         } as any
         let index = 2;
         return data;
     }
 
-    if (!state.file  || GlobalState.getItem().file.renderedNotes === undefined)
+    if (!state.file || GlobalState.getItem().file.renderedNotes === undefined)
         return null;
 
     return (
@@ -108,13 +109,11 @@ export default () => {
                 </View>
                 <GameEngine
                     style={[styles.gameContainer]}
-                    systems={[Touches,MoveNotes]}
+                    systems={[Touches, MoveNotes]}
                     running={state.playing}
                     entities={entities()}>
-
                     <Text style={{ fontSize: 15, color: "white" }}>{time}</Text>
                     <StatusBar hidden={true} />
-
                 </GameEngine>
 
             </SafeAreaView>

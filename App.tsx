@@ -7,16 +7,19 @@ import { AppContext, InfoBeholder } from './types';
 import objectUsestate from '@alentoma/usestate'
 import Context from './AppContext';
 import GlobalState from './objects/GlobalState';
+import { fontsLoader } from './ui/Icons';
+import { WindowPropeties } from './objects/WindowPropeties';
 
 
 export default function App() {
+  const [loaded] = fontsLoader();
   const state = objectUsestate<AppContext>({
-    windowSize: {
-      width: Dimensions.get("window").width,
-      height: Dimensions.get("window").height
-    }
+    windowSize: new WindowPropeties()
   }, true)
 
+
+  if (!loaded)
+    return null;
 
   return (
     <Context.Provider value={state}>
