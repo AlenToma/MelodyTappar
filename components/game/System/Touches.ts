@@ -11,14 +11,11 @@ export default (entities: any, { touches }: { touches: TouchEvent[] }) => {
 
         const infoHolder = GlobalState.getItem();
 
-        if (infoHolder.ticks % 10 == 0)
-            screen.glowLines = [];
-
         if (infoHolder === undefined || infoHolder.file.renderedNotes === undefined) {
             console.error("infoHolder cannot be null")
             return entities;
         }
-        const bottom = (infoHolder.windowSize.height - infoHolder.windowSize.panelBottomHeight);
+
         const keys = Object.keys(entities);
         const isTouched = (component: INoteTick, x: number, y: number) => {
             if (component.position.noteCalculatedTick) {
@@ -28,12 +25,12 @@ export default (entities: any, { touches }: { touches: TouchEvent[] }) => {
                         component.position.noteCalculatedTick.timer)
 
                 let top = component.position.top;
-                let topBottom = top + component.position.height;
+                let topBottom = top + (component.note.file.windowPropeties.panelBottomHeight / 2);
 
                 let tTop = component.position.top - speed;
 
                 const left = component.position.left;
-                const right = component.position.left + component.position.width;
+                const right = component.position.left + (component.note.file.windowPropeties.panelBottomHeight / 2);
 
                 if (((y >= top && y <= topBottom) || (y >= tTop && y <= topBottom + speed))
                     &&
@@ -44,8 +41,8 @@ export default (entities: any, { touches }: { touches: TouchEvent[] }) => {
             }
             return false;
         }
-        touches = touches.filter((x: any) => (x.type === "press" || x.type === "end" || x.type == "start") && !x.handled)
-        touches.forEach(x => {
+        const controlledNotes = {} as any;
+        touches.filter((x: any) => (x.type == "start" || x.type == "end") && !x.handled).forEach(x => {
             try {
                 const xAny = x as any;
                 for (const key of keys) {
@@ -54,25 +51,58 @@ export default (entities: any, { touches }: { touches: TouchEvent[] }) => {
                         component.type != "Note"
                         || !component.enabled
                         || xAny.handled ||
-                        component.touched ||
-                        component.position.top + component.position.height < bottom) {
+                        component.position.top + component.position.height < component.note.getBottom()) {
+                        if (component.note && screen.glowLines.includes(component.note.noteIndex))
+                            screen.glowLines = [...screen.glowLines.filter(f => f !== component.note.noteIndex)]
                         continue;
                     }
                     if (isTouched(component, x.event.locationX, x.event.locationY)
                         ||
                         isTouched(component, x.event.pageX, x.event.pageY)) {
-                        infoHolder.score++;
-                        component.touched = true;
+                        if (!component.note.touchHandled)
+                            infoHolder.score += component.note.addScore();
+                        if (component.note.touchHandled && x.type == "start")
+                            continue;
+                        component.touched = x.type == "start";
+                        if (x.type == "start" && !component.note.touchHandled) {
+                            component.note.touchHandled = true;
+                            screen.glowLines = [...screen.glowLines, component.note.noteIndex];
+                        } else screen.glowLines = [...screen.glowLines.filter(f => f !== component.note.noteIndex)]
                         xAny.handled = true;
-                        screen.glowLines = [...screen.glowLines, component.position.panelType as PanelPosition];
-                    }
+                        controlledNotes[key] = true;
 
+                    }
                 }
             } catch (e) {
                 console.error(e);
             }
         });
 
+        touches.filter((x: any) => (x.type == "move")).forEach(x => {
+            try {
+                const xAny = x as any;
+                for (const key of keys) {
+                    const component = entities[key] as INoteTick;
+                    if (!component ||
+                        component.type != "Note"
+                        || !component.enabled
+                        || xAny.handled ||
+                        component.position.top + component.position.height < component.note.getBottom()) {
+                        if (component.note && screen.glowLines.includes(component.note.noteIndex))
+                            screen.glowLines = [...screen.glowLines.filter(f => f !== component.note.noteIndex)]
+                        continue;
+                    }
+                    if (isTouched(component, x.event.locationX, x.event.locationY)
+                        ||
+                        isTouched(component, x.event.pageX, x.event.pageY)) {
+                        if (component.touched && !controlledNotes[key])
+                            infoHolder.score += component.note.addScore();
+                    }
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        });
 
         return entities;
 

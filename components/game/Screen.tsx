@@ -1,15 +1,30 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View, SafeAreaView, Vibration } from 'react-native';
-import { INote, IScreen, InfoBeholder, PanelPosition, Renderer, INoteTick } from '../../types';
+import { INote, IScreen, InfoBeholder, PanelPosition, Renderer, INoteTick, Position } from '../../types';
 import Context from '../../AppContext';
 import GlobalState from '../../objects/GlobalState';
-const getGlow = (position: PanelPosition) => {
+import objectUseState from '@alentoma/usestate'
+const getGlow = (position: PanelPosition | number, glowLines: number[]) => {
+    if (glowLines.length == 0)
+        return;
+    const positions = ["Left", "Middle", "Right"]
+    const p = (typeof position === "number" ? positions[position] : position) as PanelPosition;
     const glowStyle = { ...style.glow };
+    let note = undefined;
+    for (const index of glowLines) {
+        const n = GlobalState.getItem().file.renderedNotes[index]
+        if (n && n.panelPosition === p) {
+            note = n;
+            break;
+        }
+    }
+    if (note === undefined)
+        return undefined;
     let backgroundColor = "#7944da";
-    if (position === "Middle") {
+    if (p) {
         backgroundColor = "#38abe9";
     }
-    else if (position === "Right") {
+    else if (p) {
         backgroundColor = "#ecb336";
     }
     glowStyle.backgroundColor = backgroundColor;
@@ -17,8 +32,25 @@ const getGlow = (position: PanelPosition) => {
 }
 
 export default (props: IScreen) => {
-    const appContext = React.useContext(Context)
+    const appContext = React.useContext(Context);
+    const state = objectUseState({
+        innerGlow: "#b5a7ef"
+    })
+    const timer = useRef<any>()
 
+
+    useEffect(() => {
+        timer.current = requestAnimationFrame(designTimer)
+        return () => cancelAnimationFrame(timer.current)
+    }, [])
+
+    const designTimer = async (time: number) => {
+
+        if (GlobalState.getItem().ticks % 100 === 0) {
+            state.innerGlow = state.innerGlow == "#eadc98" ? "#b5a7ef" : "#eadc98";
+        }
+        timer.current = requestAnimationFrame(designTimer)
+    }
     return (
         <View pointerEvents='none' style={[style.container, {
             ...appContext.windowSize
@@ -35,21 +67,29 @@ export default (props: IScreen) => {
                     borderLeftWidth: 0,
                     width: appContext.windowSize.panelWidth
                 },
-                props.glowLines.includes("Left") ? getGlow("Left") : undefined]
+                getGlow("Left", props.glowLines)]
                 }>
                 </View>
                 <View style={[style.roadPanels,
                 { borderLeftWidth: 0, width: appContext.windowSize.panelWidth },
-                props.glowLines.includes("Middle") ? getGlow("Middle") : undefined]} >
+                getGlow("Middle", props.glowLines)]} >
                 </View>
                 <View style={[style.roadPanels,
                 { borderRightWidth: 0, width: appContext.windowSize.panelWidth },
-                props.glowLines.includes("Right") ? getGlow("Right") : undefined]} >
+                getGlow("Right", props.glowLines)]} >
                 </View>
                 <View style={[style.bottomPanel, { height: appContext.windowSize.panelBottomHeight }]} >
                     {
-                        [0, 1, 2].map((x) => <View style={[style.bottomButton, { height: appContext.windowSize.noteHeight, width: appContext.windowSize.panelWidth - 10 }]} key={x} />)
+                        [0, 1, 2].map((x) => <View style={[
+                            style.bottomButton,
+                            getGlow(x, props.glowLines),
+                            {
+
+                                width: appContext.windowSize.panelWidth - 10
+
+                            }]} key={x} />)
                     }
+                    <View style={[style.glow, style.line, { backgroundColor: state.innerGlow }]}></View>
                 </View>
             </View>
         </View>
@@ -64,6 +104,14 @@ const style = StyleSheet.create({
         alignItems: "center",
         backgroundColor: "#160d30",
 
+    },
+
+    line: {
+        width: "92%",
+        height: 5,
+        position: "absolute",
+        left: 12.5,
+        opacity:0.5
     },
 
     glow: {
@@ -98,7 +146,7 @@ const style = StyleSheet.create({
     bottomButton: {
         backgroundColor: "#000",
         borderRadius: 20,
-        height: 3,
+        height: "90%",
         borderWidth: 1,
         overflow: "hidden",
         marginRight: 5,

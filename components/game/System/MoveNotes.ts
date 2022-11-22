@@ -5,21 +5,26 @@ import { isOverlapping } from "../../../Methods";
 import Touches from "./Touches";
 import NoteTick from "../NoteTick";
 import GlobalState from "../../../objects/GlobalState";
-let waiting = false;
-export default (entities: any, { touches }: any) => {
+export default (entities: any, { touches, time }: any) => {
     try {
-        if (waiting)
-            return entities;
-        waiting = true;
 
-
+    /*    if (Object.keys(entities).length > 20)
+            console.log("Wow to much data")*/
+        const screen = entities.screen as IScreen;
         const deleteEntity = (key: any) => {
             if (entities[key] !== undefined) {
+                entities[key].enabled = false;
                 delete entities[key];
             }
         }
-        const infoHolder = GlobalState.getItem();
 
+        const isOutOfRange = (note: INote) => {
+            const r = note.isOutOfRange();
+            if (r && screen.glowLines.includes(note.noteIndex))
+                screen.glowLines = [...screen.glowLines.filter(f => f !== note.noteIndex)]
+            return r;
+        }
+        const infoHolder = GlobalState.getItem();
 
         if (infoHolder === undefined || infoHolder.file.renderedNotes === undefined) {
             console.error("infoHolder cannot be null")
@@ -27,28 +32,34 @@ export default (entities: any, { touches }: any) => {
         }
         infoHolder.ticks++;
         const height = infoHolder.windowSize.height;
-        const screen = entities.screen as IScreen;
-        const positions = {} as any;
+
+
         for (const component of infoHolder.file.renderedNotes) {
-            if (component.isOutOfRange()) {
+            if (isOutOfRange(component)) {
                 component.enabled = false;
                 deleteEntity(component.noteIndex);
                 continue;
             }
-            const position = component.tick(infoHolder.currentVideoTime);
-            if (component.isOutOfRange()) {
+            const position = component.tick(infoHolder.currentVideoTime, infoHolder.timeInitiated, time);
+            if (isOutOfRange(component) || !component.addToScreen()) {
                 deleteEntity(component.noteIndex);
                 continue;
             }
 
-            if (position.top > 0 && position.top < height * 60) {
-                positions[component.noteIndex] = {
-                    ...component.position
+            if (entities[component.noteIndex] === undefined) {
+                entities[component.noteIndex] = {
+                    renderer: NoteTick,
+                    note: component,
+                    type: "Note",
+                    position: position,
+                    enabled: true
                 };
-
+            } else {
+                entities[component.noteIndex].position = { ...position }
+                entities[component.noteIndex].enabled = true;
             }
         }
-
+        /*
         const addedComponents = [] as Position[];
         const posKeys = Object.keys(positions);
         while (posKeys.length > 0) {
@@ -61,29 +72,7 @@ export default (entities: any, { touches }: any) => {
             }
 
             addedComponents.push(component.position)
-            if (!entities[key]) {
-                entities[key] = {
-                    renderer: NoteTick,
-                    position: {
-                        ...positions[key],
-                        top: (component.position.top - component.position.height) - 10
-                    },
-                    note: component,
-                    enabled: true,
-                    type: "Note"
-                };
-            } else {
-                const item = entities[key];
-                if (item) {
-                    item.position = { ...positions[key], top: positions[key].top }
-                    item.enabled = true;
-                    component.enabled = true;
-                }
-            }
-
-        }
-        waiting = false
-
+        }*/
         return entities;
     } catch (e) {
         console.error(e);

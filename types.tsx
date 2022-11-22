@@ -2,7 +2,9 @@ import { MidiFile } from "./objects/MidiFile";
 import { YoutubeIframeRef } from "react-native-youtube-iframe";
 import { WindowPropeties } from "./objects/WindowPropeties";
 import ScreenNotes from "./objects/ScreenNotes";
+import { ColorValue } from "react-native";
 export type PanelPosition = "Left" | "Middle" | "Right";
+export type FileType = "Midi" | "Mboy"
 export type INote = {
     time: number;
     duration: number;
@@ -15,10 +17,22 @@ export type INote = {
     position: Position;
     noteIndex: number;
     panelPosition: PanelPosition;
-    totalTick:number;
+    totalTick: number;
+    markers?:[];
     file: MidiFile;
-    tick: (videoTime: number) => Position;
-    isOutOfRange:()=> boolean;
+    tick: (videoTime: number, timeInitiated: number, gameTimer: GameTimer) => Position;
+    isOutOfRange: () => boolean;
+    addToScreen: () => boolean;
+    touchHandled: boolean;
+    addScore: () => number;
+    getBottom: () => number;
+}
+
+export type GameTimer = {
+    current: number,
+    delta: number,
+    previous: number,
+    previousDelta: number,
 }
 
 export type NoteCalculatedTick = {
@@ -33,7 +47,14 @@ export type Position = {
     height: number;
     width: number;
     noteCalculatedTick?: NoteCalculatedTick,
-    panelType?: PanelPosition
+    panelType?: PanelPosition,
+    topShadow: number;
+}
+
+export type Marker = {
+    id: string;
+    code: string;
+    color: ColorValue
 }
 
 export type Tracks = {
@@ -47,6 +68,7 @@ export type Tracks = {
         family: string;
         number: number;
         name: string;
+        color: ColorValue
     }
 }
 
@@ -57,28 +79,31 @@ export type Midi = {
         tempos: {
             bpm: number;
             ticks: number;
+            start_pos: number;
         }[]
     },
-    tracks: Tracks[]
+    tracks: Tracks[],
+    markers?: Marker[];
 }
 
 export type IScreen = {
-    glowLines: PanelPosition[],
-    notes:ScreenNotes<INoteTick>,
+    glowLines: number[],
+    notes: ScreenNotes<INoteTick>,
 }
 
 export type INoteTick = {
     note: INote,
-    position: Position,
-    enabled?: boolean,
     overlaping?: boolean,
-    touched?: boolean
+    touched?: boolean,
+    position: Position,
+    enabled: boolean
 } & ObjectType
 
 
 export type InfoBeholder = {
     ticks: number;
     currentVideoTime: number;
+    timeInitiated: number;
     file: MidiFile;
     windowSize: WindowPropeties;
     score: number;

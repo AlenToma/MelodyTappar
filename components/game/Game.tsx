@@ -9,14 +9,16 @@ import HttpClient from '../../objects/HttpClient';
 import { MidiFile } from '../../objects/MidiFile';
 import YoutubePlayer, { YoutubeIframeRef } from "react-native-youtube-iframe";
 import Context from '../../AppContext';
-import { isOverlapping } from '../../Methods';
+import { isOverlapping, translateJson } from '../../Methods';
 import MoveNotes from './System/MoveNotes';
 import Touches from './System/Touches';
 import GlobalState from '../../objects/GlobalState';
 import ScreenNotes from '../../objects/ScreenNotes';
+import midiTestFile from '../../midiTestFile';
+import mboy from '../../mboy'
 
-const midURL = "https://raw.githubusercontent.com/AlenToma/rhythmgame/main/midtest.mid";
-const videoId = "poLp-pJphWw";
+const midURL = "https://raw.githubusercontent.com/AlenToma/rhythmgame/main/eminem.midi";
+const videoId = "Atv-zwhSyFE";
 
 export default () => {
     const appContext = React.useContext(Context)
@@ -27,49 +29,46 @@ export default () => {
     }, true);
 
     const [time, setTime] = useState(0);
-    const timer = useRef<any>();
     const playerRef = useRef<YoutubeIframeRef>(null);
 
     React.useEffect(() => {
         (async () => {
-            const midiFile = (await HttpClient.GetJson(midURL)) as Midi;
-            const file = new MidiFile(midiFile, appContext.windowSize);
+            //const midiFile = (await HttpClient.GetJson(midURL)) as Midi;
+            const file = translateJson(mboy, appContext.windowSize);
             await file.build();
             GlobalState.setItem({
                 windowSize: appContext.windowSize,
                 ticks: 0,
                 currentVideoTime: 0,
                 file: file,
-                score: 0
+                score: 0,
+                timeInitiated: -1
             });
             state.file = file;
             console.log(GlobalState.getItem().file.renderedNotes?.length)
         })();
-        return () => clearTimeout(timer.current);
-        // timer.current = setInterval(() => currentTime += 0.01, 1)
     }, [])
 
 
     useEffect(() => {
         (async () => {
-            validateCurrentTime();
-            /* if (playerRef.current && state.playing && state.file?.getFirstNote() && currentTime < state.file.getFirstNote().time) {
-                 console.log("Seeking To", state.file.getFirstNote().time)
-                 playerRef.current?.seekTo(state.file.getFirstNote().time, true);
-             }*/
+            requestAnimationFrame(validateCurrentTime)
         })();
     }, [state.playing, playerRef.current])
 
 
-    const validateCurrentTime = async () => {
-        clearTimeout(timer.current);
+    const validateCurrentTime = async (time: number) => {
+
         if (playerRef.current) {
-            GlobalState.getItem().currentVideoTime = await playerRef.current.getCurrentTime();
+            const item = GlobalState.getItem();
+
+            item.currentVideoTime = await playerRef.current.getCurrentTime();
+            if (item.timeInitiated == -1) {
+                item.timeInitiated = item.currentVideoTime;
+            }
             setTime(GlobalState.getItem().currentVideoTime)
         }
-
-        timer.current = setTimeout(validateCurrentTime, 100);
-
+        requestAnimationFrame(validateCurrentTime)
     }
 
     const entities = () => {
@@ -96,23 +95,26 @@ export default () => {
                         height={200}
                         width={200}
                         play={true}
+                        mute={false}
                         videoId={videoId}
                         onChangeState={(event) => {
                             console.log(event)
-                            if (event == "playing")
+                            if (event == "playing") {
                                 state.playing = true;
+                            }
                             if (["paused", "ended"].includes(event)) {
                                 state.playing = false;
                             }
                         }}
                     />
+                    <Text style={{ fontSize: 15, color: "white" }}>{time}</Text>
                 </View>
                 <GameEngine
                     style={[styles.gameContainer]}
-                    systems={[Touches, MoveNotes]}
+                    systems={[MoveNotes, Touches]}
+
                     running={state.playing}
                     entities={entities()}>
-                    <Text style={{ fontSize: 15, color: "white" }}>{time}</Text>
                     <StatusBar hidden={true} />
                 </GameEngine>
 

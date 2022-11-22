@@ -15,7 +15,7 @@ export default function App() {
   const [loaded] = fontsLoader();
   const state = objectUsestate<AppContext>({
     windowSize: new WindowPropeties()
-  }, true)
+  }, false)
 
 
   if (!loaded)
